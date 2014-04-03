@@ -1,22 +1,47 @@
+from cmath import isinf
+from copy import copy
 import json
 import os
 
-from werkzeug.datastructures import MultiDict
 
+class ConfigDict(object):
+    def __init__(self, defaults={}):
+        self._confs = [defaults]
 
-def load_config(config_files, defaults=None):
-    cfg = MultiDict(defaults)
+    def copy(self):
+        return copy(self)
 
-    for path in config_files:
-        try:
+    def __getitem__(self, name):
+        for conf in self._confs:
+            if name in conf:
+                return conf[name]
+        raise KeyError(name)
+
+    def get_path(self, base, *args):
+        return os.path.join(os.path.expanduser(self[base]), *args)
+
+    def keys(self):
+        ks = set()
+        for conf in self._confs:
+            ks.update(conf.keys())
+        return ks
+
+    def load_file(self, fp):
+        data = json.load(fp)
+        if not isinstance(data, dict):
+            raise ValueError('Dictionary expected')
+        self._confs.insert(0, data)
+
+    def load_files(self, config_files):
+        for name in config_files:
+            path = os.path.expanduser(name)
+
             if not os.path.exists(path):
                 continue
 
-            with open(os.path.expanduser(path)) as fp:
-                data = json.load(fp)
-            cfg.update(data)
-        except Exception as e:
-            raise ValueError('Could not parse configuration file {!r}: {}'
-                             .format(path, e))
-
-    return cfg
+            try:
+                with open(path) as fp:
+                    self.load_file(fp)
+            except Exception as e:
+                raise ValueError('Could not parse configuration file {!r}: {}'
+                                 .format(name, e))
