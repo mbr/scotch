@@ -17,8 +17,18 @@ class ConfigDict(object):
                 return conf[name]
         raise KeyError(name)
 
+    def get(self, name, *args):
+        try:
+            return self[name]
+        except KeyError:
+            if args:
+                return args[0]
+            raise
+
     def get_path(self, base, *args):
-        return os.path.join(os.path.expanduser(self[base]), *args)
+        return os.path.abspath(
+            os.path.join(os.path.expanduser(self[base]), *args)
+        )
 
     def keys(self):
         ks = set()

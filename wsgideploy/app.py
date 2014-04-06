@@ -1,5 +1,8 @@
 from importlib import import_module
 import os
+import subprocess
+
+from blinker import Signal
 
 from logbook import Logger
 import shortuuid
@@ -9,6 +12,8 @@ log = Logger('WSGIDeploy')
 
 
 class WSGIApp(object):
+    checking_out_source = Signal()
+
     def __init__(self, name, deploy):
         self.name = name
         self.config = deploy.config.copy()
@@ -27,6 +32,16 @@ class WSGIApp(object):
             raise ValueError('Error reading configuration for {}: {}'.format(
                 name, e
             ))
+
+    def check_call(self, *args, **kwargs):
+        kwargs.setdefault('stderr', subprocess.STDOUT)
+
+        try:
+            log.debug('Running subprocess: {!r} {!r}'.format(args, kwargs))
+            return subprocess.check_output(*args, **kwargs)
+        except subprocess.CalledProcessError as e:
+            log.debug(e.output)
+            raise
 
     def get_conf_path(self, *args):
         return self.config.get_path(
@@ -50,6 +65,46 @@ class WSGIApp(object):
 
         # prepare virtualenv
         log.debug('Preparing virtualenv in {}'.format(venv_path))
+
+        venv_args = ['virtualenv', '--distribute']
+
+        python_version = self.config.get('python-version', None)
+        if python_version is not None:
+            venv_args.extend(['-p', python_version])
+
+        venv_args.append(venv_path)
+
+        # we use subprocess rather than the API because we may need to use a
+        # different python interpreter
+        log.debug(venv_args)
+        self.check_call(venv_args)
+
+        src_path = self.get_instance_path(self.config['instance-src-dir'])
+        log.debug('Requesting new source checkout into {}'.format(src_path))
+
+        # signal source plugin to check out
+        self.checking_out_source.send(self, src_path=src_path)
+
+        # install requirements
+        requirements = self.get_instance_path(
+            self.config['instance-src-dir'], 'requirements.txt')
+
+        python = self.get_instance_path(
+            self.config['instance-venv-dir'], 'bin', 'python')
+
+        pip = self.get_instance_path(
+            self.config['instance-venv-dir'], 'bin', 'pip')
+
+        if os.path.exists(requirements):
+            self.check_call(['pip', 'install', '-r', requirements])
+        else:
+            log.debug('{} not found, using setup.py develop'.format(
+                requirements))
+
+            self.check_call(
+                [pip, 'install', '.'],
+                cwd=self.get_instance_path(self.config['instance-src-dir'])
+            )
 
 
 class WSGIDeploy(object):

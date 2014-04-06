@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from importlib import import_module
 import os
+import subprocess
 
 from .defaults import cfg as default_config
 from .config import ConfigDict
@@ -55,4 +56,7 @@ def main_wsgi_deploy():
 
         app.deploy()
 
-    return locals()[args.action]()
+    try:
+        locals()[args.action]()
+    except subprocess.CalledProcessError as e:
+        log.critical('Command failed: {}'.format(' '.join(e.cmd)))
