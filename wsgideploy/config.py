@@ -6,7 +6,8 @@ import os
 
 class ConfigDict(object):
     def __init__(self, defaults={}):
-        self._confs = [defaults]
+        self._confs = []
+        self.load_defaults(defaults)
 
     def copy(self):
         return copy(self)
@@ -35,6 +36,9 @@ class ConfigDict(object):
         for conf in self._confs:
             ks.update(conf.keys())
         return ks
+
+    def load_defaults(self, defaults):
+        self._confs.append(defaults)
 
     def load_file(self, fp):
         data = json.load(fp)

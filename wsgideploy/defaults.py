@@ -1,5 +1,5 @@
 cfg = {
-    'plugins-enabled': ['git'],
+    'plugins-enabled': ['git', 'uwsgi'],
     'configuration-path': '/etc/wsgi-deploy',
     'applications-path': '/var/local/wsgi-deploy',
 

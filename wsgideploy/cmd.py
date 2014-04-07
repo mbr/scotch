@@ -2,11 +2,12 @@ from argparse import ArgumentParser
 from importlib import import_module
 import os
 import subprocess
+import logbook
 
 from .defaults import cfg as default_config
 from .config import ConfigDict
 
-from logbook import Logger
+from logbook import Logger, StderrHandler, NullHandler
 from wsgideploy.app import WSGIDeploy
 
 
@@ -26,6 +27,7 @@ def main_wsgi_deploy():
                         help='Configuration files to search. Can be given '
                              'multiple times, default is {!r}'
                              .format(DEFAULT_CONFIGURATION_PATHS))
+    parser.add_argument('-d', '--debug', default=False, action='store_true')
     subparsers = parser.add_subparsers(dest='action',
                                        help='Action to perform')
 
@@ -35,6 +37,14 @@ def main_wsgi_deploy():
     cmd_deploy.add_argument('app_name')
 
     args = parser.parse_args()
+
+    # set up logging handlers
+    if not args.debug:
+        NullHandler(level=logbook.DEBUG).push_application()
+        handler = StderrHandler(level=logbook.INFO)
+        handler.format_string = '{record.message}'
+        handler.push_application()
+
     if not args.configuration_file:
         args.configuration_file = DEFAULT_CONFIGURATION_PATHS
 

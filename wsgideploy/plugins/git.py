@@ -9,21 +9,27 @@ def register(deploy):
     pass
 
 
-@WSGIApp.checking_out_source.connect
+@WSGIApp.checked_out_source.connect
 def check_out_repo(sender, src_path):
-
-    git_args = ['git', 'clone']
+    log.info('Checkout using git')
+    git_args = ['git', 'archive', '--format', 'tar']
 
     src = sender.config['src']
     if not '://' in src:
         src = os.path.expanduser(src)
-    git_args.append(src)
-    git_args.append(src_path)
+    git_args.extend(['--remote' ,src])
+    git_args.append(sender.config.get('git.branch', 'master'))
 
-    branch = sender.config.get('git.branch', None)
-    if branch:
-        git_args.extend(['--branch', branch])
+    # create destination directory
+    os.makedirs(src_path)
 
-    log.debug('Checking out git repository: {} to {}'.format(src, src_path))
+    # start untarring-process
+    tarproc = subprocess.Popen(['tar', '-xf', '-'], cwd=src_path,
+                                    stdin=subprocess.PIPE)
 
-    sender.check_call(git_args)
+    log.debug('Exporting git repository {} to '.format(src, src_path))
+
+    subprocess.check_call(git_args, stdout=tarproc.stdin)
+
+    if not tarproc.wait() == 0:
+        raise RuntimeError('tar failed')

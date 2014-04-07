@@ -20,7 +20,8 @@ setup(
     url='http://github.com/mbr/wsgi-deploy',
     license='MIT',
     packages=find_packages(exclude=['tests']),
-    install_requires=['logbook', 'blinker', 'shortuuid', 'virtualenv'],
+    install_requires=['logbook', 'blinker', 'shortuuid', 'virtualenv',
+                      'jinja2'],
     entry_points={
         'console_scripts': [
             'wsgi-deploy = wsgideploy.cmd:main_wsgi_deploy',

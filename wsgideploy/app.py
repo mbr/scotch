@@ -12,7 +12,8 @@ log = Logger('WSGIDeploy')
 
 
 class WSGIApp(object):
-    checking_out_source = Signal()
+    checked_out_source = Signal()
+    deployed_app = Signal()
 
     def __init__(self, name, deploy):
         self.name = name
@@ -33,7 +34,7 @@ class WSGIApp(object):
                 name, e
             ))
 
-    def check_call(self, *args, **kwargs):
+    def check_output(self, *args, **kwargs):
         kwargs.setdefault('stderr', subprocess.STDOUT)
 
         try:
@@ -55,7 +56,7 @@ class WSGIApp(object):
         )
 
     def deploy(self):
-        log.info('Deploying {}'.format(self.name))
+        log.info('Deploying {}...'.format(self.name))
 
         # generate an instance-id and app directory
         self.instance_id = shortuuid.uuid()
@@ -64,7 +65,8 @@ class WSGIApp(object):
         os.makedirs(venv_path)
 
         # prepare virtualenv
-        log.debug('Preparing virtualenv in {}'.format(venv_path))
+        log.info('Creating new virtualenv')
+        log.debug('virtualenv based in {}'.format(venv_path))
 
         venv_args = ['virtualenv', '--distribute']
 
@@ -76,14 +78,14 @@ class WSGIApp(object):
 
         # we use subprocess rather than the API because we may need to use a
         # different python interpreter
-        log.debug(venv_args)
-        self.check_call(venv_args)
+        self.check_output(venv_args)
 
         src_path = self.get_instance_path(self.config['instance-src-dir'])
-        log.debug('Requesting new source checkout into {}'.format(src_path))
+        log.info('Checking out source {}'.format(self.config['src']))
+        log.debug('Checkout path is {}'.format(src_path))
 
         # signal source plugin to check out
-        self.checking_out_source.send(self, src_path=src_path)
+        self.checked_out_source.send(self, src_path=src_path)
 
         # install requirements
         requirements = self.get_instance_path(
@@ -96,15 +98,19 @@ class WSGIApp(object):
             self.config['instance-venv-dir'], 'bin', 'pip')
 
         if os.path.exists(requirements):
-            self.check_call(['pip', 'install', '-r', requirements])
+            log.info('Installing dependencies using pip/requirements.txt')
+            self.check_output(['pip', 'install', '-r', requirements])
         else:
             log.debug('{} not found, using setup.py develop'.format(
                 requirements))
 
-            self.check_call(
+            log.info('Installing package (and dependencies) using pip')
+            self.check_output(
                 [pip, 'install', '.'],
                 cwd=self.get_instance_path(self.config['instance-src-dir'])
             )
+
+        self.deployed_app.send(self)
 
 
 class WSGIDeploy(object):
