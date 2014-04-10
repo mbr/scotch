@@ -1,20 +1,10 @@
 from argparse import ArgumentParser
-from os.path import expanduser
 import subprocess
 
-from configparser import ConfigParser, ExtendedInterpolation
 import logbook
 from logbook import Logger, StderrHandler, NullHandler
-from pathlib import Path
 
 from wsgideploy.app import WSGIDeploy
-
-
-DEFAULT_CONFIGURATION_PATHS=[
-    '/etc/wsgi-deploy.cfg'
-    '~/.wsgi-deploy.cfg',
-    './wsgi-deploy.cfg',
-]
 
 
 def main_wsgi_deploy():
@@ -25,7 +15,7 @@ def main_wsgi_deploy():
                         action='append', default=[],
                         help='Configuration files to search. Can be given '
                              'multiple times, default is {!r}'
-                             .format(DEFAULT_CONFIGURATION_PATHS))
+                             .format(WSGIDeploy.DEFAULT_CONFIGURATION_PATHS))
     parser.add_argument('-d', '--debug', default=False, action='store_true')
     subparsers = parser.add_subparsers(dest='action',
                                        help='Action to perform')
@@ -46,19 +36,8 @@ def main_wsgi_deploy():
         handler.format_string = '{record.message}'
         handler.push_application()
 
-    # parse configuration
-    if not args.configuration_file:
-        args.configuration_file = DEFAULT_CONFIGURATION_PATHS
 
-    cfg = ConfigParser(interpolation=ExtendedInterpolation())
-
-    cfg.read_file(Path(__file__).with_name('defaults.cfg').open())
-    for cfgfile in args.configuration_file:
-        cfgfile = Path(cfgfile)
-        if cfgfile.exists():
-            cfg.read_file(open(expanduser(str(cfgfile))))
-
-    wd = WSGIDeploy(cfg, args)
+    wd = WSGIDeploy(args)
 
     def _header(s):
         print(s)
@@ -80,7 +59,7 @@ def main_wsgi_deploy():
 
         # dump config
         _header('App configuration')
-        for section_name, section in sorted(self.config.items()):
+        for section_name, section in sorted(app.config.items()):
             for key, value in sorted(section.items()):
                 print('{}:{} = {!r}'.format(section_name, key,  value))
 

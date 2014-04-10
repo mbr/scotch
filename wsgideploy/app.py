@@ -1,5 +1,6 @@
 from importlib import import_module
 import os
+from os.path import expanduser
 import subprocess
 
 from blinker import Signal
@@ -18,8 +19,8 @@ class WSGIApp(object):
 
     def __init__(self, name, deploy):
         # load configuration, starting from global and reading app sepcific
-        self.config = ConfigParser(interpolation=ExtendedInterpolation())
-        self.config.read_dict(deploy.config, 'global configuration')
+        self.config = deploy.load_config()
+        self.name = name
 
         # set application name
         self.config['app']['name'] = name
@@ -33,6 +34,7 @@ class WSGIApp(object):
 
         # load configuration
         log.debug('Loading app configuration for {}'.format(name))
+
         self.config.read_file(cfgfile.open())
 
 
@@ -106,9 +108,15 @@ class WSGIApp(object):
 
 
 class WSGIDeploy(object):
-    def __init__(self, config, args):
-        self.config = config
+    DEFAULT_CONFIGURATION_PATHS=[
+        '/etc/wsgi-deploy.cfg'
+        '~/.wsgi-deploy.cfg',
+        './wsgi-deploy.cfg',
+    ]
+
+    def __init__(self, args):
         self.args = args
+        self.config = self.load_config()
 
         self.apps = {}
         self.plugins = {}
@@ -125,11 +133,27 @@ class WSGIDeploy(object):
             plugin = mod.plugin(self)
             self.plugins[plugin.name] = plugin
 
-    def load_app(self, path):
+    def load_app(self, name):
+        path = Path(self.config['paths']['apps_enabled']) / name
         app = WSGIApp(path.name, self)
-        self.apps[path.name] = app
+        self.apps[app.name] = app
         return app
 
     def load_apps(self):
         for p in Path(self.config['paths']['apps_enabled']).iterdir():
-            self.load_app(p)
+            self.load_app(p.name)
+
+    def load_config(self):
+        # parse configuration
+        config_files = [Path(__file__).with_name('defaults.cfg')]
+        config_files.extend(self.args.configuration_file or
+                            self.DEFAULT_CONFIGURATION_PATHS)
+
+        cfg = ConfigParser(interpolation=ExtendedInterpolation())
+
+        for cfgfile in config_files:
+            cfgfile = Path(cfgfile)
+            if cfgfile.exists():
+                cfg.read_file(open(expanduser(str(cfgfile))))
+
+        return cfg
