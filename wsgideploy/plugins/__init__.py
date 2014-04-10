@@ -1,3 +1,4 @@
+import inspect
 import jinja2
 from logbook import Logger
 from pathlib import Path
@@ -14,13 +15,12 @@ def remove_suffix(suffix, s):
 
 
 class Plugin(object):
-    def __init__(self, deploy, name=None):
+    def __init__(self, site, name=None):
         self.name = name or remove_suffix('plugin', self.__class__.__name__)
         self.log = Logger(self.__class__.__name__.lower())
 
         self.log.debug('{} initialized'.format(self.name))
-
-        self.base_dir = Path(__file__).parent
+        self.base_dir = Path(inspect.getfile(self.__class__)).parent
 
         # initialize templates
         template_path = self.base_dir / 'templates'
@@ -30,13 +30,16 @@ class Plugin(object):
             )
 
         # load possible default configuration
-        defaults_file = self.base_dir / 'defaults.cfg'
-        if defaults_file.exists():
-            deploy.config.read_file(open(defaults_file))
+        self.register(site)
 
-        self.register(deploy)
+    @property
+    def DEFAULTS_FILE(self):
+        return self.base_dir / 'defaults.cfg'
 
-    def register(self, deploy):
+    def register(self, site):
+        pass
+
+    def enable_app(self, app):
         pass
 
     def render_template(self, template_name, **kwargs):
@@ -48,6 +51,6 @@ class Plugin(object):
         return tpl.render(**kwargs)
 
     def output_template(self, template_name, dest, **kwargs):
-        with open(dest, 'w') as out:
+        with dest.open('w') as out:
             self.log.info('Writing {}'.format(dest))
             out.write(self.render_template(dest, **kwargs))

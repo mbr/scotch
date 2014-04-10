@@ -3,29 +3,25 @@ import subprocess
 
 from pathlib import Path
 
-from wsgideploy.app import WSGIApp
 from wsgideploy.plugins import Plugin
 
 
 class GitPlugin(Plugin):
-    @WSGIApp.checked_out_source.connect
-    def check_out_repo(self, app, src_path):
-        src_path = Path(src_path)
+    def check_out_repo(self, app):
+        src_path = Path(app.config['app']['src_path'])
         self.log.info('Checkout using git')
         git_args = ['git', 'archive', '--format', 'tar']
 
-        src = app.config['src']
+        src = app.config['app']['src']
         if not '://' in src:
             src = expanduser(src)
         git_args.extend(['--remote', src])
-        git_args.append(app.config.get('git.branch', 'master'))
-
-        # create destination directory
-        src_path.mkdir(parents=True)
+        git_args.append(app.config['git']['branch'])
 
         # start untarring-process
-        tarproc = subprocess.Popen(['tar', '-xf', '-'], cwd=src_path,
-                                        stdin=subprocess.PIPE)
+        tarproc = subprocess.Popen(['tar', '-xf', '-'],
+                                   cwd=str(src_path),
+                                   stdin=subprocess.PIPE)
 
         self.log.debug('Exporting git repository {} to '.format(src,
                                                                 src_path))
@@ -34,5 +30,8 @@ class GitPlugin(Plugin):
 
         if not tarproc.wait() == 0:
             raise RuntimeError('tar failed')
+
+    def enable_app(self, app):
+        app.checked_out_source.connect(self.check_out_repo)
 
 plugin = GitPlugin

@@ -4,7 +4,7 @@ import subprocess
 import logbook
 from logbook import Logger, StderrHandler, NullHandler
 
-from wsgideploy.app import WSGIDeploy
+from wsgideploy.app import Site
 
 
 def main_wsgi_deploy():
@@ -15,7 +15,7 @@ def main_wsgi_deploy():
                         action='append', default=[],
                         help='Configuration files to search. Can be given '
                              'multiple times, default is {!r}'
-                             .format(WSGIDeploy.DEFAULT_CONFIGURATION_PATHS))
+                             .format(Site.DEFAULT_CONFIGURATION_PATHS))
     parser.add_argument('-d', '--debug', default=False, action='store_true')
     subparsers = parser.add_subparsers(dest='action',
                                        help='Action to perform')
@@ -37,7 +37,7 @@ def main_wsgi_deploy():
         handler.push_application()
 
 
-    wd = WSGIDeploy(args)
+    wd = Site(args)
 
     def _header(s):
         print(s)
@@ -56,6 +56,7 @@ def main_wsgi_deploy():
 
     def dump():
         app = wd.load_app(args.app_name)
+        app.config['app']['instance_id'] = '(INSTANCE_ID)'
 
         # dump config
         _header('App configuration')

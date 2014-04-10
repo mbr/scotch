@@ -1,17 +1,17 @@
-import jinja2
-from logbook import Logger
 from pathlib import Path
+
 from wsgideploy.app import WSGIApp
 from wsgideploy.plugins import Plugin
 
 
 class UWSGIPlugin(Plugin):
-    @WSGIApp.deployed_app.connect
     def generate_uwsgi_config(self, app):
-        output_fn = (Path(app.config['uwsgi']['apps_available_path'])
-                     / '{}.ini'.format(app.name))
+        output_fn = Path(app.config['uwsgi']['app_config'])
 
         self.output_template('app.ini', output_fn)
+
+    def enable_app(self, app):
+        WSGIApp.deployed_app.connect(self.generate_uwsgi_config)
 
 
 plugin = UWSGIPlugin
