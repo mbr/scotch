@@ -21,7 +21,7 @@ setup(
     license='MIT',
     packages=find_packages(exclude=['tests']),
     install_requires=['logbook', 'blinker', 'shortuuid', 'virtualenv',
-                      'jinja2'],
+                      'jinja2', 'configparser', 'pathlib'],
     entry_points={
         'console_scripts': [
             'wsgi-deploy = wsgideploy.cmd:main_wsgi_deploy',

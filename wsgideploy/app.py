@@ -3,8 +3,9 @@ import os
 import subprocess
 
 from blinker import Signal
-
+from configparser import ConfigParser, ExtendedInterpolation
 from logbook import Logger
+from pathlib import Path
 import shortuuid
 
 
@@ -16,23 +17,24 @@ class WSGIApp(object):
     deployed_app = Signal()
 
     def __init__(self, name, deploy):
-        self.name = name
-        self.config = deploy.config.copy()
+        # load configuration, starting from global and reading app sepcific
+        self.config = ConfigParser(interpolation=ExtendedInterpolation())
+        self.config.read_dict(deploy.config, 'global configuration')
 
-        log.debug('Loading app {}'.format(name))
-        configfile = self.get_conf_path(self.config['app-config-file'])
+        # set application name
+        self.config['app']['name'] = name
 
-        if not os.path.exists(configfile):
-            log.debug('Missing {}'.format(os.path.abspath(configfile)))
+        # find configuration file
+        cfgfile = Path(self.config['app']['config_file'])
+        if not cfgfile.exists():
+            log.debug('Missing {}'.format(cfgfile))
             raise RuntimeError('Configuration file {} missing for app {}'
-                               .format(self.config['app-config-file'], name))
+                               .format(cfgfile, name))
 
-        try:
-            self.config.load_file(open(configfile))
-        except ValueError as e:
-            raise ValueError('Error reading configuration for {}: {}'.format(
-                name, e
-            ))
+        # load configuration
+        log.debug('Loading app configuration for {}'.format(name))
+        self.config.read_file(cfgfile.open())
+
 
     def check_output(self, *args, **kwargs):
         kwargs.setdefault('stderr', subprocess.STDOUT)
@@ -44,16 +46,6 @@ class WSGIApp(object):
             log.debug(e.output)
             raise
 
-    def get_conf_path(self, *args):
-        return self.config.get_path(
-            'configuration-path', self.config['apps-enabled-dir'], self.name,
-            *args
-        )
-
-    def get_instance_path(self, *args):
-        return self.config.get_path(
-            'applications-path', self.name, self.instance_id, *args
-        )
 
     def deploy(self):
         log.info('Deploying {}...'.format(self.name))
@@ -118,35 +110,26 @@ class WSGIDeploy(object):
         self.config = config
         self.args = args
 
-        self.base_dir = self.config.get_path('configuration-path')
-        self.apps_enabled_dir = self.config.get_path(
-            'configuration-path', self.config['apps-enabled-dir']
-        )
-
         self.apps = {}
+        self.plugins = {}
 
         # load plugins
-        for name in self.config['plugins-enabled']:
+        for name, enabled in self.config['plugins'].items():
+            if not enabled:
+                continue
+
+            # plugins are loaded by importing a module with the name of
+            # wsgideploy.plugins.PLUGIN_NAME and then instantiating the
+            # plugin-classed
             mod = import_module('wsgideploy.plugins.{}'.format(name))
-            mod.register(self)
-            log.debug('Loading plugin {}'.format(name))
+            plugin = mod.plugin(self)
+            self.plugins[plugin.name] = plugin
 
-    def get_app_path(self, name, *args):
-        return self.config.get_path(
-            'configuration-path', self.config['apps-enabled-dir'], name, *args
-        )
-
-    def load_app(self, name, path=None):
-        if not path:
-            path = self.get_app_path(name)
-        app = WSGIApp(name, self)
-        self.apps[name] = app
+    def load_app(self, path):
+        app = WSGIApp(path.name, self)
+        self.apps[path.name] = app
         return app
 
     def load_apps(self):
-        log.debug('Searching for apps in {}'.format(
-            os.path.abspath(self.apps_enabled_dir))
-        )
-
-        for name in os.listdir(self.apps_enabled_dir):
-            self.load_app(name)
+        for p in Path(self.config['paths']['apps_enabled']).iterdir():
+            self.load_app(p)
