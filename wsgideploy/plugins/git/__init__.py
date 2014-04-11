@@ -34,4 +34,5 @@ class GitPlugin(Plugin):
     def enable_app(self, app):
         app.checked_out_source.connect(self.check_out_repo)
 
+
 plugin = GitPlugin
