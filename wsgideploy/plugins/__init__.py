@@ -51,6 +51,12 @@ class Plugin(object):
         return tpl.render(**kwargs)
 
     def output_template(self, template_name, dest, **kwargs):
+        if not dest.parent.exists():
+            self.log.warning('Path {} did not exist and was created'.format(
+                             dest.parent,
+            ))
+            dest.parent.mkdir(parents=True)
+
         with dest.open('w') as out:
-            self.log.info('Writing {}'.format(dest))
+            self.log.info('Writing {}'.format(dest.resolve()))
             out.write(self.render_template(dest, **kwargs))
