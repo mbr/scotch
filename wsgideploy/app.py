@@ -70,6 +70,10 @@ class WSGIApp(object):
         # generate an instance-id and app directory
         self.config['app']['instance_id'] = shortuuid.uuid()
 
+        # create run_path
+        run_path = Path(self.config['app']['run_path'])
+        run_path.mkdir(dirmode, parents=True)
+
         venv_path = Path(self.config['app']['venv_path'])
         venv_path.mkdir(dirmode, parents=True)
 
