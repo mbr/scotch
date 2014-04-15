@@ -140,12 +140,18 @@ class Site(object):
         # load site defaults
         cfg.extend_using(self.DEFAULTS_FILE)
 
+        # load plugin defaults
+        for plugin in self.plugins.values():
+            cfg.extend_using(plugin.DEFAULTS_FILE)
+
         # load site configuration
         site_configs = (self.args.configuration_file or
                         self.DEFAULT_CONFIGURATION_PATHS)
         cfg.extend_using(*site_configs)
 
-        # load plugin defaults
+        plugins_loaded = False
+
+        # load plugins
         for name, enabled in cfg['plugins'].items():
             if not enabled:
                 continue
@@ -157,8 +163,18 @@ class Site(object):
                 mod = import_module('wsgideploy.plugins.{}'.format(name))
 
                 plugin = mod.plugin(self)
-                self.plugins[plugin.name] = plugin
+                self.plugins[name] = plugin
                 cfg.extend_using(plugin.DEFAULTS_FILE)
+
+                plugins_loaded = True
+
+        if plugins_loaded:
+            # slight hack: reload config, as its currently not possible to
+            # tell configparser to merge two configurations without
+            # overwriting
+            log.debug('Additional plugins have been loaded, reloading '
+                      'configuration.')
+            return self.create_site_config()
 
         return cfg
 
