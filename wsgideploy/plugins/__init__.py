@@ -26,7 +26,7 @@ class Plugin(object):
         template_path = self.base_dir / 'templates'
         if template_path.exists():
             self.jinja_env = jinja2.Environment(
-                loader=jinja2.PackageLoader(__name__)
+                loader=jinja2.FileSystemLoader(str(template_path))
             )
 
         # load possible default configuration
@@ -43,7 +43,7 @@ class Plugin(object):
         pass
 
     def render_template(self, template_name, **kwargs):
-        if not hasattr(self.jinja_env):
+        if not hasattr(self, 'jinja_env'):
             return RuntimeError('Plugin {} has no template path'.format(
                 self.__class__.__name__
             ))
@@ -59,4 +59,4 @@ class Plugin(object):
 
         with dest.open('w') as out:
             self.log.info('Writing {}'.format(dest.resolve()))
-            out.write(self.render_template(dest, **kwargs))
+            out.write(self.render_template(template_name, **kwargs))
