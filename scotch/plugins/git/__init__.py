@@ -3,7 +3,7 @@ import subprocess
 
 from pathlib import Path
 
-from wsgideploy.plugins import Plugin
+from scotch.plugins import Plugin
 
 
 class GitPlugin(Plugin):

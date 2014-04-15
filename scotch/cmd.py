@@ -4,7 +4,7 @@ import subprocess
 import logbook
 from logbook import Logger, StderrHandler, NullHandler
 
-from wsgideploy.app import Site
+from scotch.app import Site
 
 
 def main_wsgi_deploy():

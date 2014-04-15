@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from wsgideploy.app import WSGIApp
-from wsgideploy.plugins import Plugin
+from scotch.app import WSGIApp
+from scotch.plugins import Plugin
 
 
 class UWSGIPlugin(Plugin):

@@ -123,9 +123,9 @@ class WSGIApp(object):
 
 class Site(object):
     DEFAULT_CONFIGURATION_PATHS=[
-        '/etc/wsgi-deploy.cfg',
-        '~/.wsgi-deploy.cfg',
-        './wsgi-deploy.cfg',
+        '/etc/scotch.cfg',
+        '~/.scotch.cfg',
+        './scotch.cfg',
     ]
 
     DEFAULTS_FILE = Path(__file__).with_name('defaults.cfg')
@@ -162,9 +162,9 @@ class Site(object):
 
             if not name in self.plugins:
                 # plugins are loaded by importing a module with the name of
-                # wsgideploy.plugins.PLUGIN_NAME and then instantiating the
+                # scotch.plugins.PLUGIN_NAME and then instantiating the
                 # plugin-classed
-                mod = import_module('wsgideploy.plugins.{}'.format(name))
+                mod = import_module('scotch.plugins.{}'.format(name))
 
                 plugin = mod.plugin(self)
                 self.plugins[name] = plugin
