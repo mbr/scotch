@@ -1,58 +1,104 @@
 WSGI-deployment made easy
 =========================
 
-wsgi-deploy is a toolkit to deploy many small WSGI-applications onto a
-single server. It will allow you to specify how an app should be deployed
+scotch is a toolkit to deploy many WSGI-applications onto a single server.
+It will allow you to specify how an app should be deployed
 and generate nginx, uwsgi-configuration files and virtualenvs.
 
 
+Operation overview
+------------------
+
+First, scotch is set up on the system by providing a suitable global
+configuration, called the site configuration. Different ways of deploying
+apps are supported, the shipped defaults assume a Debian system using `nginx
+ <http://nginx.org>`_ and `uWSGI <http://projects.unbit.it/uwsgi/>`_.
+
+Every app also adds its own configuration options as needed,
+stored in a different configuration file. Deploying an app is done by
+running::
+
+   $ scotch deploy myapp
+
+This will trigger a three-step process:
+
+1. A new *instance* of the app will be created. An instance is a directory
+   that contains (almost) all of the necessary information for the
+   deployment.
+2. The app will be *checked out* into the instance from a VCS,
+   archive or some other source.
+3. A new `virtualenv <https://pypi.python.org/pypi/virtualenv>`_ will be
+   created and dependencies of the app will be installed.
+4. Finally, the app will be *registered*. This is site dependant and handled
+   by plugins that can, for example, generate configuration files for
+   webservers or wsgi application servers.
+
+
+Configuration files
+-------------------
+
+Configuration files are loaded in the following order for each app instance.
+Files loaded later can overwrite values from files loaded earlier:
+
+1. Built-in defaults (for scotch and plugins).
+2. Site configuration: ``./scotch.cfg``, ``~/.scotch.cfg`` and
+   ``/etc/scotch.cfg``. These locations can be overridden by the ``-c``
+   command line option.
+3. App configuration, in ``/etc/scotch/apps.enabled/myapp`` (for an app
+   named "myapp"). This path is configurable as ``${paths:configuration}``
+   (see below).
+
+
 Configuration file syntax
--------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Here is an example configuration file (JSON-syntax), ``sample-app.conf``:
-
-  {
-    'source-uri': 'git://somehost:/some/repo',
-    'app-factory': 'sampleapp.create_app',
-  }
-
-Running ``wsgi-deploy myapp`` will cause wsgi-deploy to:
-
-1. Create a new home for the application (in ``/srv/wsgi-apps/sample-app-ID``).
-   ``ID`` is a random id that gets generated with each instance,
-   to allow seamless switching over in production.
-2. Create a new virtualenv in ``/src/wsgi-apps/sample-app-ID/venv``.
-3. Checkout the git repository to ``/src/wsgi-apps/sample-app-ID/app``.
-4. Install all of the requirements through ``requirements.txt`` found in the
-   app; if none is found there, run ``python setup.py develop``.
-5. Create a configuration file by merging all of ``conf/*`` in canonical order
-   into a larger file, stored in ``/src/wsgi-apps/sample-app-ID/config``.
-6. Generate the necessary application server configuration (usually uwsgi).
-7. Generate the necessary nginx server configuration.
-8. Reload the application server.
-9. Reload the webserver.
+Configuration files use the ``configparser`` module `found in the Python 3
+stdlib <https://docs.python.org/3.3/library/configparser.html>`_ or `its
+backport <https://pypi.python.org/pypi/configparser>`_ on Python 2. The
+`extended interpolation <https://docs.python.org/3.3/library/configparser.html
+#configparser.ExtendedInterpolation>`_ is also used.
 
 
-Global configuration
---------------------
+Site configuration
+~~~~~~~~~~~~~~~~~~
 
-Global configuration for wsgi-deploy is merged, in the following order:
+The site configuration is meant to be used to smooth away differences
+between different distributions and web or application servers. Ideally,
+site configuration is done by the distro or administrator once and all apps
+are deployable on any site, regardless of its configuration. Ideally,
+no changes will have to be made to the sensible defaults,
+but here is an example for a more exotic ``/etc/scotch.cfg``::
 
-1. Built-in defaults (shipped as ``wsgi-deploy/defaults.conf``).
-2. ``/etc/wsgi-deploy.conf``
-3. ``~/wsgi-deploy.conf``
-4. ``./wsgi-deploy.conf``.
+    [app]
+    interpreter=/usr/local/custom-python/bin/python
+    venv_path=/virtualenvs/${name}
 
-Generation of configuration is handled through plugins,
-two are shipped with wsgi-deploy: ``nginx`` for webserver deployments and
-``uwsgi`` as the application server.
+    [paths]
+    configuration=/nfs/conf/scotch
+    instances=/nfs/scotch-instances
 
-Sample configuration:
 
-  {
-    'python-version': null,
-    'nginx.sites-available': '/etc/nginx/sites-available',
-    'nginx.sites-enabled': '/etc/nginx/sites-enabled',
-    'nginx.reload-command': '/etc/init.d/nginx reload',
-    'uwsgi.reload-command': '/etc/init.d/uwsgivirtual reload',
-  }
+This will enables a custom compiled interpreter and configuration and
+instances store on an (assumed) nfs volume, while virtual environments are
+kept on the local machine. Note that configuration files are just merged
+together, there's no technical distinction between a defaults-file,
+site configuration or app configuration.
+
+
+App configuration
+~~~~~~~~~~~~~~~~~
+
+Configuration for an application is read from ``${app:config}``, which will
+per default end up as ``/etc/scotch/apps.enabled/myapp`` for an app named
+``myapp``. Here is an example::
+
+    [app]
+    source_type=git
+    src=git@someserver:repos/myapp.git
+
+
+With this file in place, deploying using scotch will cause an export of the
+git repository into the instance dir, then the required dependencies will be
+installed into a clean virtualenv and nginx and uwsgi configuration files
+will be generated.
+
