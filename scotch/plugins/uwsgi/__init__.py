@@ -18,6 +18,9 @@ class UWSGIPlugin(Plugin):
             link.parent.mkdir(parents=True)
 
         self.log.info('Creating link {}'.format(link))
+
+        if link.exists():
+            link.unlink()
         link.symlink_to(Path(app.config['uwsgi']['app_config']))
 
     def enable_app(self, app):
