@@ -56,28 +56,18 @@ def drop_root(uid=None, gid=None):
         os.setuid(uid)
 
 
-def lookup_user(user=None, group=None):
-    """Looks up a user or group name on a unix system.
-
-    :param user: user to look up.
-    :param user: group to look up.
-    :return: Two-tuple, consisting of ``(uid, gid)``."""
-    uid = gid = -1
-
-    if user:
-        uid = getpwnam(user).pw_uid
-
-    if group:
-        gid = getgrnam(group).gr_gid
-
-    return uid, gid
-
-
-def chown(path, uid=-1, gid=-1):
+def chown(path, uid=None, gid=None):
     """Changes ownership of target path.
 
     :param uid: new uid for file (-1 to ignore).
     :param gid: new gid for file (-1 to ignore)."""
+
+    if uid is None:
+        uid = -1
+
+    if gid is None:
+        gid = -1
+
     if uid != -1 or gid != -1:
         log.debug('Changing ownership of {} to {}:{}'.format(
             path, uid, gid)
@@ -118,6 +108,17 @@ class WSGIApp(object):
     def dirmode(self):
         return int(self.config['site']['dirmode'], 8)
 
+    @property
+    def uid(self):
+        if self.config['app']['user']:
+            return getpwnam(self.config['app']['user']).pw_uid
+
+    @property
+    def gid(self):
+        if self.config['app']['user']:
+            return getgrnam(self.config['app']['group']).gr_gid
+
+
     def command_args(self, **kwargs):
         kwargs.setdefault('stderr', subprocess.STDOUT)
 
@@ -130,7 +131,7 @@ class WSGIApp(object):
         }
 
         rv= {
-            'preexec_fn': partial(drop_root, *lookup_user(user, group)),
+            'preexec_fn': partial(drop_root, self.uid, self.gid),
             'close_fds': True,
             'env': env,
         }
@@ -150,9 +151,7 @@ class WSGIApp(object):
 
 
     def chown_to_user(self, path):
-        chown(path, *lookup_user(
-            self.config['app']['user'], self.config['app']['group']
-        ))
+        chown(path, self.uid, self.gid)
 
     @signalling
     def checkout(self):
