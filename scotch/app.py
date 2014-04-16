@@ -1,7 +1,9 @@
-from functools import wraps
+from functools import wraps, partial
+from grp import getgrnam
 from importlib import import_module
 import os
 from os.path import expanduser
+from pwd import getpwnam
 import subprocess
 
 from blinker import Signal
@@ -43,6 +45,47 @@ def signalling(f):
     return _
 
 
+def drop_root(uid=None, gid=None):
+    """Drops root permissions by changing to a different UID and GID.
+
+    :param uid: numeric user id to change to. May be ``None`` to ignore.
+    :param gid: numeric group id to change to. May be ``None`` to ignore."""
+    if gid:
+        os.setgid(gid)
+    if uid:
+        os.setuid(uid)
+
+
+def lookup_user(user=None, group=None):
+    """Looks up a user or group name on a unix system.
+
+    :param user: user to look up.
+    :param user: group to look up.
+    :return: Two-tuple, consisting of ``(uid, gid)``."""
+    uid = gid = -1
+
+    if user:
+        uid = getpwnam(user).pw_uid
+
+    if group:
+        gid = getgrnam(group).gr_gid
+
+    return uid, gid
+
+
+def chown(path, uid=-1, gid=-1):
+    """Changes ownership of target path.
+
+    :param uid: new uid for file (-1 to ignore).
+    :param gid: new gid for file (-1 to ignore)."""
+    if uid != -1 or gid != -1:
+        log.debug('Changing ownership of {} to {}:{}'.format(
+            path, uid, gid)
+        )
+
+        os.chown(str(path), uid, gid)
+
+
 class WSGIApp(object):
     request_source = Signal()
 
@@ -75,15 +118,35 @@ class WSGIApp(object):
     def dirmode(self):
         return int(self.config['site']['dirmode'], 8)
 
-    def check_output(self, *args, **kwargs):
+    def run_command(self, *args, **kwargs):
         kwargs.setdefault('stderr', subprocess.STDOUT)
+
+        user = kwargs.pop('user', self.config['app']['user'])
+        group = kwargs.pop('group', self.config['app']['group'])
+
+        # use a (mostly) clean environment
+        env = {
+            'PATH': os.environ['PATH'],
+        }
 
         try:
             log.debug('Running subprocess: {!r} {!r}'.format(args, kwargs))
-            return subprocess.check_output(*args, **kwargs)
+            return subprocess.check_output(
+                *args,
+                preexec_fn=partial(drop_root, *lookup_user(user, group)),
+                close_fds=True,
+                env=env,
+                **kwargs
+            )
         except subprocess.CalledProcessError as e:
             log.debug(e.output)
             raise
+
+
+    def chown_to_user(self, path):
+        chown(path, *lookup_user(
+            self.config['app']['user'], self.config['app']['group']
+        ))
 
     @signalling
     def checkout(self):
@@ -93,12 +156,14 @@ class WSGIApp(object):
         # create instance folder
         instance_path = Path(self.config['app']['instance_path'])
         instance_path.mkdir(self.dirmode, parents=True)
+        self.chown_to_user(instance_path)
 
         log.info('Instance path is {}'.format(instance_path))
 
         # create run_path
         run_path = Path(self.config['app']['run_path'])
         run_path.mkdir(self.dirmode, parents=True)
+        self.chown_to_user(run_path)
 
         # prepare virtualenv
         log.info('Creating new virtualenv')
@@ -106,6 +171,7 @@ class WSGIApp(object):
         log.debug('virtualenv based in {}'.format(venv_path))
 
         venv_path.mkdir(self.dirmode, parents=True)
+        self.chown_to_user(venv_path)
 
         venv_args = ['virtualenv', '--distribute']
 
@@ -117,7 +183,7 @@ class WSGIApp(object):
 
         # we use subprocess rather than the API because we may need to use a
         # different python interpreter
-        self.check_output(venv_args)
+        self.run_command(venv_args)
 
         src_path = Path(self.config['app']['src_path'])
         src_path.mkdir(self.dirmode, parents=True)
@@ -132,13 +198,13 @@ class WSGIApp(object):
 
         if requirements.exists():
             log.info('Installing dependencies using pip/requirements.txt')
-            self.check_output(['pip', 'install', '-r', str(requirements)])
+            self.run_command([str(pip), 'install', '-r', str(requirements)])
         else:
             log.debug('{} not found, using setup.py develop'.format(
                 requirements))
 
             log.info('Installing package (and dependencies) using pip')
-            self.check_output(
+            self.run_command(
                 [str(pip), 'install', '.'],
                 cwd=str(src_path)
             )
