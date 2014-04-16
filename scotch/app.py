@@ -68,7 +68,7 @@ class WSGIApp(object):
 
         # activate plugins
         # (currently, there's no way to override the list plugins, all are
-        #  always activated)
+        #  always active)
         for plugin in site.plugins.values():
             plugin.enable_app(self)
 
