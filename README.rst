@@ -90,16 +90,18 @@ App configuration
 ~~~~~~~~~~~~~~~~~
 
 Configuration for an application is read from ``${app:config}``, which will
-per default end up as ``/etc/scotch/apps.enabled/myapp`` for an app named
-``myapp``. Here is an example::
+per default end up as ``/etc/scotch/apps.enabled/dram.cfg`` for an app named
+``dram``. Here is an example::
 
     [app]
     source_type=git
-    src=git@someserver:repos/myapp.git
+    src=git@github.com:mbr/scotch-sample-app
 
 
-With this file in place, deploying using scotch will cause an export of the
-git repository into the instance dir, then the required dependencies will be
-installed into a clean virtualenv and nginx and uwsgi configuration files
-will be generated.
+If you create the above file with the name specified, you can run::
 
+    $ scotch deploy dram
+
+which should just work. See the `source <https://github
+.com/mbr/scotch-sample-app`_ of the sample application for details on how an
+app should be configured.
