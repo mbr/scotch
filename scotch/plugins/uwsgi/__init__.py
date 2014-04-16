@@ -9,7 +9,15 @@ class UWSGIPlugin(Plugin):
     def generate_uwsgi_config(self, app):
         """Generates the necessary UWSGI configuration for the app."""
         output_fn = Path(app.config['uwsgi']['app_config'])
-        self.output_template('app.ini', output_fn, config=app.config)
+
+        kwargs = {}
+
+        if app.config['uwsgi']['drop_root']:
+            kwargs['uid'] = app.uid
+            kwargs['gid'] = app.gid
+
+        self.output_template('app.ini', output_fn, config=app.config,
+                             **kwargs)
 
     def activate_uwsgi_config(self, app):
         link = Path(app.config['uwsgi']['app_enabled_link'])
