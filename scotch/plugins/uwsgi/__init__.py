@@ -11,7 +11,7 @@ class UWSGIPlugin(Plugin):
         self.output_template('app.ini', output_fn, config=app.config)
 
     def enable_app(self, app):
-        WSGIApp.deployed_app.connect(self.generate_uwsgi_config)
+        WSGIApp.register.exit.connect(self.generate_uwsgi_config)
 
 
 plugin = UWSGIPlugin

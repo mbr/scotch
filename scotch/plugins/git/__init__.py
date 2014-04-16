@@ -32,7 +32,7 @@ class GitPlugin(Plugin):
             raise RuntimeError('tar failed')
 
     def enable_app(self, app):
-        app.checked_out_source.connect(self.check_out_repo)
+        app.request_source.connect(self.check_out_repo)
 
 
 plugin = GitPlugin

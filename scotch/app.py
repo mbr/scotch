@@ -1,3 +1,4 @@
+from functools import wraps
 from importlib import import_module
 import os
 from os.path import expanduser
@@ -24,11 +25,27 @@ class SiteConfigParser(ConfigParser):
                 log.debug('Skipping non-existant {}'.format(cfgfile))
 
 
-class WSGIApp(object):
-    checked_out_source = Signal()
-    deployed_app = Signal()
+def signalling(f):
+    """Adds an .enter and .exit signal to a method, which are emitted upon
+    entry/exit from a method call. Sender is the object itself."""
+    f.enter = Signal('{}.enter'.format(f.__name__))
+    f.exit = Signal('{}.exit'.format(f.__name__))
 
+    @wraps(f)
+    def _(self, *args, **kwargs):
+        log.debug('Enter {}:{}'.format(self.name, f.__name__))
+        f.enter.send(self)
+        rv = f(self, *args, **kwargs)
+        f.exit.send(self)
+        log.debug('Finished {}:{}'.format(self.name, f.__name__))
+        return rv
+
+    return _
+
+
+class WSGIApp(object):
     dirmode = 0x777  # FIXME: review security here
+    request_source = Signal()
 
     def __init__(self, name, site):
         # load configuration, starting from global and reading app sepcific
@@ -65,9 +82,8 @@ class WSGIApp(object):
             log.debug(e.output)
             raise
 
-    def deploy(self):
-        log.info('Deploying {}...'.format(self.name))
-
+    @signalling
+    def checkout(self):
         # generate an instance-id and app directory
         self.config['app']['instance_id'] = shortuuid.uuid()
 
@@ -105,8 +121,7 @@ class WSGIApp(object):
         log.info('Checking out source {}'.format(self.config['app']['src']))
         log.debug('Checkout path is {}'.format(src_path))
 
-        # signal source plugin to check out
-        self.checked_out_source.send(self)
+        self.request_source.send(self)
 
         # install requirements
         requirements = src_path / 'requirements.txt'
@@ -125,7 +140,21 @@ class WSGIApp(object):
                 cwd=str(src_path)
             )
 
-        self.deployed_app.send(self)
+    @signalling
+    def register(self):
+        pass
+
+    @signalling
+    def activate(self):
+        pass
+
+    @signalling
+    def deploy(self):
+        log.info('Deploying {}...'.format(self.name))
+
+        self.checkout()
+        self.register()
+        self.activate()
 
 
 class Site(object):
