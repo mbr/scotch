@@ -64,10 +64,11 @@ Site configuration
 
 The site configuration is meant to be used to smooth away differences
 between different distributions and web or application servers. Ideally,
-site configuration is done by the distro or administrator once and all apps
-are deployable on any site, regardless of its configuration. Ideally,
-no changes will have to be made to the sensible defaults,
-but here is an example for a more exotic ``/etc/scotch.cfg``::
+no changes will have to be made because the defaults are fairly reasonable
+on Debian-based systems.
+
+For educational purposes, here is an example for a more exotic
+``/etc/scotch.cfg``::
 
     [app]
     interpreter=/usr/local/custom-python/bin/python
