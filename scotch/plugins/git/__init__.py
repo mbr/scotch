@@ -21,12 +21,15 @@ class GitPlugin(Plugin):
         # start untarring-process
         tarproc = subprocess.Popen(['tar', '-xf', '-'],
                                    cwd=str(src_path),
-                                   stdin=subprocess.PIPE)
+                                   stdin=subprocess.PIPE,
+                                   **app.command_args())
 
         self.log.debug('Exporting git repository {} to '.format(src,
                                                                 src_path))
 
-        subprocess.check_call(git_args, stdout=tarproc.stdin)
+        subprocess.check_call(git_args,
+                              stdout=tarproc.stdin,
+                              **app.command_args(stderr=None))
 
         if not tarproc.wait() == 0:
             raise RuntimeError('tar failed')

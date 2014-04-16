@@ -118,7 +118,7 @@ class WSGIApp(object):
     def dirmode(self):
         return int(self.config['site']['dirmode'], 8)
 
-    def run_command(self, *args, **kwargs):
+    def command_args(self, **kwargs):
         kwargs.setdefault('stderr', subprocess.STDOUT)
 
         user = kwargs.pop('user', self.config['app']['user'])
@@ -129,15 +129,21 @@ class WSGIApp(object):
             'PATH': os.environ['PATH'],
         }
 
+        rv= {
+            'preexec_fn': partial(drop_root, *lookup_user(user, group)),
+            'close_fds': True,
+            'env': env,
+        }
+
+        rv.update(kwargs)
+        return rv
+
+    def run_command(self, *args, **kwargs):
+        kwargs = self.command_args(**kwargs)
+
         try:
             log.debug('Running subprocess: {!r} {!r}'.format(args, kwargs))
-            return subprocess.check_output(
-                *args,
-                preexec_fn=partial(drop_root, *lookup_user(user, group)),
-                close_fds=True,
-                env=env,
-                **kwargs
-            )
+            return subprocess.check_output(*args, **kwargs)
         except subprocess.CalledProcessError as e:
             log.debug(e.output)
             raise
@@ -187,6 +193,7 @@ class WSGIApp(object):
 
         src_path = Path(self.config['app']['src_path'])
         src_path.mkdir(self.dirmode, parents=True)
+        self.chown_to_user(src_path)
         log.info('Checking out source {}'.format(self.config['app']['src']))
         log.debug('Checkout path is {}'.format(src_path))
 
