@@ -70,16 +70,22 @@ class WSGIApp(object):
         # generate an instance-id and app directory
         self.config['app']['instance_id'] = shortuuid.uuid()
 
+        # create instance folder
+        instance_path = Path(self.config['app']['instance_path'])
+        instance_path.mkdir(dirmode, parents=True)
+
+        log.info('Instance path is {}'.format(instance_path))
+
         # create run_path
         run_path = Path(self.config['app']['run_path'])
         run_path.mkdir(dirmode, parents=True)
 
-        venv_path = Path(self.config['app']['venv_path'])
-        venv_path.mkdir(dirmode, parents=True)
-
         # prepare virtualenv
         log.info('Creating new virtualenv')
+        venv_path = Path(self.config['app']['venv_path'])
         log.debug('virtualenv based in {}'.format(venv_path))
+
+        venv_path.mkdir(dirmode, parents=True)
 
         venv_args = ['virtualenv', '--distribute']
 
