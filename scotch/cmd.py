@@ -7,7 +7,7 @@ from logbook import Logger, StderrHandler, NullHandler
 from scotch.app import Site
 
 
-def main_wsgi_deploy():
+def main_scotch_deploy():
     log = Logger('main')
 
     parser = ArgumentParser()
