@@ -44,7 +44,6 @@ def signalling(f):
 
 
 class WSGIApp(object):
-    dirmode = 0x777  # FIXME: review security here
     request_source = Signal()
 
     def __init__(self, name, site):
@@ -71,6 +70,10 @@ class WSGIApp(object):
         #  always active)
         for plugin in site.plugins.values():
             plugin.enable_app(self)
+
+    @property
+    def dirmode(self):
+        return int(self.config['site']['dirmode'], 8)
 
     def check_output(self, *args, **kwargs):
         kwargs.setdefault('stderr', subprocess.STDOUT)
