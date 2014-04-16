@@ -28,6 +28,8 @@ class WSGIApp(object):
     checked_out_source = Signal()
     deployed_app = Signal()
 
+    dirmode = 0x777  # FIXME: review security here
+
     def __init__(self, name, site):
         # load configuration, starting from global and reading app sepcific
         self.name = name
@@ -64,7 +66,6 @@ class WSGIApp(object):
             raise
 
     def deploy(self):
-        dirmode = 0o777  # FIXME: review security here
         log.info('Deploying {}...'.format(self.name))
 
         # generate an instance-id and app directory
@@ -72,20 +73,20 @@ class WSGIApp(object):
 
         # create instance folder
         instance_path = Path(self.config['app']['instance_path'])
-        instance_path.mkdir(dirmode, parents=True)
+        instance_path.mkdir(self.dirmode, parents=True)
 
         log.info('Instance path is {}'.format(instance_path))
 
         # create run_path
         run_path = Path(self.config['app']['run_path'])
-        run_path.mkdir(dirmode, parents=True)
+        run_path.mkdir(self.dirmode, parents=True)
 
         # prepare virtualenv
         log.info('Creating new virtualenv')
         venv_path = Path(self.config['app']['venv_path'])
         log.debug('virtualenv based in {}'.format(venv_path))
 
-        venv_path.mkdir(dirmode, parents=True)
+        venv_path.mkdir(self.dirmode, parents=True)
 
         venv_args = ['virtualenv', '--distribute']
 
@@ -100,7 +101,7 @@ class WSGIApp(object):
         self.check_output(venv_args)
 
         src_path = Path(self.config['app']['src_path'])
-        src_path.mkdir(dirmode, parents=True)
+        src_path.mkdir(self.dirmode, parents=True)
         log.info('Checking out source {}'.format(self.config['app']['src']))
         log.debug('Checkout path is {}'.format(src_path))
 
