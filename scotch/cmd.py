@@ -24,9 +24,9 @@ def main_scotch_deploy():
     cmd_list = subparsers.add_parser('list', help='List available apps')
 
     cmd_deploy = subparsers.add_parser('deploy', help='Deploy app')
-    cmd_deploy.add_argument('app_name')
+    cmd_deploy.add_argument('app_name', nargs='+')
     cmd_dump = subparsers.add_parser('dump', help='Dump app configuration')
-    cmd_dump.add_argument('app_name')
+    cmd_dump.add_argument('app_name', nargs='+')
 
     args = parser.parse_args()
 
@@ -57,18 +57,21 @@ def main_scotch_deploy():
             print(name)
 
     def deploy():
-        app = wd.load_app(args.app_name)
-        app.deploy()
+        for name in args.app_name:
+            app = wd.load_app(name)
+            app.deploy()
 
     def dump():
-        app = wd.load_app(args.app_name)
-        app.config['app']['instance_id'] = '(INSTANCE_ID)'
+        for name in args.app_name:
+            app = wd.load_app(name)
+            app.config['app']['instance_id'] = '(INSTANCE_ID)'
 
-        # dump config
-        _header('App configuration')
-        for section_name, section in sorted(app.config.items()):
-            for key, value in sorted(section.items()):
-                print('{}:{} = {!r}'.format(section_name, key,  value))
+            # dump config
+            _header('App configuration for {}'.format(name))
+            for section_name, section in sorted(app.config.items()):
+                for key, value in sorted(section.items()):
+                    print('{}:{} = {!r}'.format(section_name, key,  value))
+                print
 
     # call appropriate command
     try:
