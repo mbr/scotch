@@ -5,39 +5,40 @@ from scotch.plugins import Plugin
 
 
 class NginxPlugin(Plugin):
-    def generate_nginx_config(self, app):
-        """Generates the necessary nginx site configuration for the app."""
-        output_fn = Path(app.config['nginx']['app_config'])
-
-        # determine what kind of setup we have
-        template = 'root.conf'
-
-        if app.config['nginx']['path'] and app.config['nginx']['path'] != '/':
-            template = 'submount.conf'
-
-        self.output_template(template, output_fn, config=app.config,
-                             _mode=int(app.config['nginx']['config_mode'], 8))
-
     def activate_nginx_config(self, app):
-        link = Path(app.config['nginx']['app_enabled_link'])
+        """Generates the necessary nginx site configuration for the app."""
+        conf_mode = int(app.config['nginx']['config_mode'], 8)
 
-        # FIXME: this is duplicate code from the uwsgi plugin.
-        # refactor me!
-        if not link.parent.exists():
-            self.log.warning('Creating non-existant {}'.format(link.parent))
-            link.parent.mkdir(parents=True)
+        # first, generate all domains/sites
+        domains = [d.strip() for d in app.config['app']['domains']
+            .split()]
 
-        self.log.info('Creating link {}'.format(link))
+        for domain in domains:
+            # replace wildcards
+            safe_name = domain.replace('*', '_')
 
-        if link.exists():
-            link.unlink()
-        link.symlink_to(Path(app.config['nginx']['app_config']))
+            # generate the domain configuration
+            output_fn = (Path(app.config['nginx']['sites_path'])
+                         / 'scotch_domain_{}'.format(safe_name))
+
+            domain_path = (Path(app.config['nginx']['domains_path']) /
+                           '{}'.format(safe_name))
+            include_path = str(domain_path) + '/*'
+
+            self.output_template('domain.conf', output_fn, config=app.config,
+                                 domain=domain, safe_name=safe_name,
+                                 include_path=include_path,
+                                 _mode=conf_mode)
+
+            # for every domain, generate the site configuration
+            output_fn = domain_path / app.name
+            self.output_template('app.conf', output_fn, config=app.config,
+                                 _mode=conf_mode)
 
         subprocess.check_call([app.config['nginx']['reload_command']],
                               shell=True)
 
     def enable_app(self, app):
-        WSGIApp.register.exit.connect(self.generate_nginx_config)
         WSGIApp.activate.exit.connect(self.activate_nginx_config)
 
 
