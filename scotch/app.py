@@ -119,11 +119,8 @@ class WSGIApp(object):
             return getgrnam(self.config['app']['group']).gr_gid
 
 
-    def command_args(self, **kwargs):
+    def command_args(self, drop_root=False, **kwargs):
         kwargs.setdefault('stderr', subprocess.STDOUT)
-
-        user = kwargs.pop('user', self.config['app']['user'])
-        group = kwargs.pop('group', self.config['app']['group'])
 
         # use a (mostly) clean environment
         env = {
@@ -131,10 +128,12 @@ class WSGIApp(object):
         }
 
         rv= {
-            'preexec_fn': partial(drop_root, self.uid, self.gid),
             'close_fds': True,
             'env': env,
         }
+
+        if drop_root:
+            rv['preexec_fn'] = partial(drop_root, self.uid, self.gid),
 
         rv.update(kwargs)
         return rv
@@ -159,15 +158,17 @@ class WSGIApp(object):
         self.config['app']['instance_id'] = shortuuid.uuid()
 
         # create instance folder
+        # note: instance folder is owned by root and read-only
         instance_path = Path(self.config['app']['instance_path'])
         instance_path.mkdir(self.dirmode, parents=True)
-        self.chown_to_user(instance_path)
 
         log.info('Instance path is {}'.format(instance_path))
 
         # create run_path
         run_path = Path(self.config['app']['run_path'])
         run_path.mkdir(self.dirmode, parents=True)
+
+        # make the run-path owned by the application/web user
         self.chown_to_user(run_path)
 
         # prepare virtualenv
@@ -176,8 +177,6 @@ class WSGIApp(object):
         log.debug('virtualenv based in {}'.format(venv_path))
 
         venv_path.mkdir(self.dirmode, parents=True)
-        self.chown_to_user(venv_path)
-
         venv_args = ['virtualenv', '--distribute']
 
         interpreter = self.config['app']['interpreter']
@@ -188,11 +187,11 @@ class WSGIApp(object):
 
         # we use subprocess rather than the API because we may need to use a
         # different python interpreter
+        # note that the virtualenv is read-only
         self.run_command(venv_args)
 
         src_path = Path(self.config['app']['src_path'])
         src_path.mkdir(self.dirmode, parents=True)
-        self.chown_to_user(src_path)
         log.info('Checking out source {}'.format(self.config['app']['src']))
         log.debug('Checkout path is {}'.format(src_path))
 
