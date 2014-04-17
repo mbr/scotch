@@ -118,6 +118,14 @@ class WSGIApp(object):
         if self.config['app']['user']:
             return getgrnam(self.config['app']['group']).gr_gid
 
+    @property
+    def domains(self):
+        return [d.strip() for d in self.config['app']['domains'].split()]
+
+    @property
+    def url_prefix(self):
+        return self.config['app']['url_prefix']
+
 
     def command_args(self, drop_root=False, **kwargs):
         kwargs.setdefault('stderr', subprocess.STDOUT)

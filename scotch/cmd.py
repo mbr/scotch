@@ -53,8 +53,10 @@ def main_scotch_deploy():
     def list():
         wd.load_apps()
 
-        for name in sorted(wd.apps.keys()):
+        for name, app in sorted(wd.apps.items()):
             print(name)
+            for domain in sorted(app.domains):
+                print('  {}{}'.format(domain, app.url_prefix))
 
     def deploy():
         for name in args.app_name:

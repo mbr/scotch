@@ -10,10 +10,7 @@ class NginxPlugin(Plugin):
         conf_mode = int(app.config['nginx']['config_mode'], 8)
 
         # first, generate all domains/sites
-        domains = [d.strip() for d in app.config['app']['domains']
-            .split()]
-
-        for domain in domains:
+        for domain in app.domains:
             # replace wildcards
             safe_name = domain.replace('*', '_')
 
