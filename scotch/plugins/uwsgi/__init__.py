@@ -17,6 +17,7 @@ class UWSGIPlugin(Plugin):
             kwargs['gid'] = app.gid
 
         self.output_template('app.ini', output_fn, config=app.config,
+                             _mode=int(app.config['uwsgi']['config_mode'], 8),
                              **kwargs)
 
     def activate_uwsgi_config(self, app):
