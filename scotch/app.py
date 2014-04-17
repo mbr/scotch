@@ -266,7 +266,7 @@ class Site(object):
         plugins_loaded = False
 
         # load plugins
-        for name in cfg['plugins'].items():
+        for name in cfg['plugins']:
             if not cfg['plugins'].getboolean(name):
                 continue
 
