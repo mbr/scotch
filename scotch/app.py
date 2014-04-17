@@ -299,8 +299,8 @@ class Site(object):
         return app
 
     def load_apps(self):
-        for p in Path(self.config['paths']['apps_enabled']).iterdir():
-            self.load_app(p.name)
+        for p in sorted(Path(self.config['paths']['apps_enabled']).iterdir()):
+            self.load_app(p.stem)
 
     @property
     def global_configuration_files(self):
