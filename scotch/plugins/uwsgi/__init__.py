@@ -12,7 +12,7 @@ class UWSGIPlugin(Plugin):
 
         kwargs = {}
 
-        if app.config['uwsgi']['drop_root']:
+        if app.config['uwsgi'].getboolean('drop_root'):
             kwargs['uid'] = app.uid
             kwargs['gid'] = app.gid
 
