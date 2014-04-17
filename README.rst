@@ -21,8 +21,8 @@ Now simply run (as root)::
     $ scotch deploy dram
 
 after which the sample app should greet you at http://localhost. See the
-`source <https://github .com/mbr/scotch-sample-app`_ of the sample application
-for some ideas on how an app can be configured.
+`source <https://github .com/mbr/scotch-sample-app>`_ of the sample
+application for some ideas on how an app can be configured.
 
 
 Operation overview
