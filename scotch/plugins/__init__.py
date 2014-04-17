@@ -36,7 +36,8 @@ class Plugin(object):
         template_path = self.base_dir / 'templates'
         if template_path.exists():
             self.jinja_env = jinja2.Environment(
-                loader=jinja2.FileSystemLoader(str(template_path))
+                loader=jinja2.FileSystemLoader(str(template_path)),
+                extensions=['jinja2.ext.with_']
             )
 
         # load possible default configuration
