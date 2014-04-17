@@ -12,10 +12,6 @@ class UWSGIPlugin(Plugin):
 
         kwargs = {}
 
-        if app.config['uwsgi'].getboolean('drop_root'):
-            kwargs['uid'] = app.uid
-            kwargs['gid'] = app.gid
-
         self.output_template('app.ini', output_fn, config=app.config,
                              _mode=int(app.config['uwsgi']['config_mode'], 8),
                              **kwargs)
