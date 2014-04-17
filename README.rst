@@ -10,7 +10,7 @@ Quick start
 ~~~~~~~~~~~
 
 First, install scotch (preferably on a Debian or Ubuntu system). Then create
-a file named ``/etc/scotch/apps-enabled/dram.cfg`` as follows:
+a file named ``/etc/scotch/apps-enabled/dram.cfg`` as follows::
 
     [app]
     src=git@github.com:mbr/scotch-sample-app
