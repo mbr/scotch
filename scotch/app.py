@@ -215,10 +215,6 @@ class WSGIApp(object):
             )
 
     @signalling
-    def register(self):
-        pass
-
-    @signalling
     def activate(self):
         pass
 
@@ -227,7 +223,6 @@ class WSGIApp(object):
         log.info('Deploying {}...'.format(self.name))
 
         self.checkout()
-        self.register()
         self.activate()
 
 
