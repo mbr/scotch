@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+import os
 import subprocess
 
 import logbook
@@ -38,6 +39,11 @@ def main_scotch_deploy():
 
 
     wd = Site(args)
+
+    # set site-umask
+    umask = int(wd.config['site']['umask'], 8)
+    log.debug('Setting umask to {:04o}'.format(umask))
+    os.umask(umask)
 
     def _header(s):
         print(s)
