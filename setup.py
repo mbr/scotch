@@ -12,7 +12,7 @@ def read(fname):
 
 setup(
     name='scotch',
-    version='0.3dev',
+    version='0.3',
     description='Simplifies WSGI application deployment.',
     long_description=read('README.rst'),
     author='Marc Brinkmann',
